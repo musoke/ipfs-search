@@ -3,6 +3,7 @@ extern crate ipfsapi;
 extern crate serde_json;
 extern crate tantivy;
 extern crate tempdir;
+extern crate tree_magic;
 
 use ipfsapi::IpfsApi;
 use failure::Error;
@@ -26,6 +27,7 @@ fn run_indexer(index_dir: &Path) -> Result<(), Error> {
     let mut schema_builder = SchemaBuilder::default();
 
     schema_builder.add_text_field("hash", TEXT | STORED);
+    schema_builder.add_text_field("mime", TEXT | STORED);
     schema_builder.add_text_field("body", TEXT);
     let schema = schema_builder.build();
     let index = Index::create(index_dir, schema.clone())?;
@@ -62,7 +64,7 @@ fn run_indexer(index_dir: &Path) -> Result<(), Error> {
     for line in filtered_logs {
         let hash = line["key"].as_str().unwrap();
         println!("{}", hash);
-        add_hash_to_index(hash, &schema, &mut index_writer);
+        add_hash_to_index(hash, &schema, &mut index_writer)?;
     }
 
     index_writer.commit().unwrap();
@@ -77,14 +79,18 @@ fn add_hash_to_index(
 ) -> Result<(), Error> {
     // TODO: Check if hash already indexed
 
-    // TODO: fetch the hash and parse its content
+    // Fetch the hash and check mime-type
+    let ipfs_api = IpfsApi::new("127.0.0.1", 5001);
+    let file: Vec<u8> = ipfs_api.cat(hash)?.collect();
+    let mime = tree_magic::from_u8(&file);
 
     let schema_hash = schema.get_field("hash").expect("field name set during dev");
+    let schema_mime = schema.get_field("mime").expect("field name set during dev");
     let schema_body = schema.get_field("body").expect("field name set during dev");
     let mut doc = Document::default();
 
     doc.add_text(schema_hash, hash);
-    doc.add_text(schema_body, "some body?");
+    doc.add_text(schema_mime, &mime);
 
     index_writer.add_document(doc);
     Ok(())
@@ -98,12 +104,13 @@ fn check_index(index_dir: &Path) -> Result<(), Error> {
     let schema = index.schema();
 
     let schema_hash = schema.get_field("hash").expect("field name set during dev");
+    let schema_mime = schema.get_field("mime").expect("field name set during dev");
     let schema_body = schema.get_field("body").expect("field name set during dev");
 
     let searcher = index.searcher();
-    let query_parser = QueryParser::for_index(&index, vec![schema_hash, schema_body]);
+    let query_parser = QueryParser::for_index(&index, vec![schema_hash, schema_mime, schema_body]);
 
-    let query = query_parser.parse_query("some").unwrap();
+    let query = query_parser.parse_query("text").unwrap();
     let mut top_collector = TopCollector::with_limit(10);
     searcher.search(&*query, &mut top_collector)?;
     let doc_addresses = top_collector.docs();

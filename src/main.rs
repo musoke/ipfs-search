@@ -9,7 +9,7 @@ use failure::Error;
 use std::path::Path;
 use tempdir::TempDir;
 use tantivy::schema::*;
-use tantivy::Index;
+use tantivy::{Index, IndexWriter};
 use tantivy::collector::TopCollector;
 use tantivy::query::QueryParser;
 
@@ -43,21 +43,29 @@ fn run_indexer(index_dir: &Path) -> Result<(), Error> {
     for line in filtered_logs {
         let hash = line["key"].as_str().unwrap();
         println!("{}", hash);
-
-        // TODO: fetch the hash and parse its content
-
-        let schema_hash = schema.get_field("hash").expect("field name set during dev");
-        let schema_body = schema.get_field("body").expect("field name set during dev");
-        let mut doc = Document::default();
-
-        doc.add_text(schema_hash, hash);
-        doc.add_text(schema_body, "some body?");
-
-        index_writer.add_document(doc);
+        add_hash_to_index(hash, &schema, &mut index_writer);
     }
 
     index_writer.commit().unwrap();
 
+    Ok(())
+}
+
+fn add_hash_to_index(
+    hash: &str,
+    schema: &Schema,
+    index_writer: &mut IndexWriter,
+) -> Result<(), Error> {
+    // TODO: fetch the hash and parse its content
+
+    let schema_hash = schema.get_field("hash").expect("field name set during dev");
+    let schema_body = schema.get_field("body").expect("field name set during dev");
+    let mut doc = Document::default();
+
+    doc.add_text(schema_hash, hash);
+    doc.add_text(schema_body, "some body?");
+
+    index_writer.add_document(doc);
     Ok(())
 }
 

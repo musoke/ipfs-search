@@ -40,6 +40,25 @@ fn run_indexer(index_dir: &Path) -> Result<(), Error> {
         .filter(|x| x["key"].is_string())
         .take(10);
 
+    // Readme directory
+    add_hash_to_index(
+        "QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG",
+        &schema,
+        &mut index_writer,
+    )?;
+    // IPFS About page
+    add_hash_to_index(
+        "QmZTR5bcpQD7cFgTorqxZDYaew1Wqgfbd2ud9QqGPAkK2V",
+        &schema,
+        &mut index_writer,
+    )?;
+    // Hello World
+    add_hash_to_index(
+        "QmfM2r8seH2GiRaC4esTjeraXEachRt8ZsSeGaWTPLyMoG",
+        &schema,
+        &mut index_writer,
+    )?;
+
     for line in filtered_logs {
         let hash = line["key"].as_str().unwrap();
         println!("{}", hash);
@@ -56,6 +75,8 @@ fn add_hash_to_index(
     schema: &Schema,
     index_writer: &mut IndexWriter,
 ) -> Result<(), Error> {
+    // TODO: Check if hash already indexed
+
     // TODO: fetch the hash and parse its content
 
     let schema_hash = schema.get_field("hash").expect("field name set during dev");

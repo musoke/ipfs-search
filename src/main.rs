@@ -1,5 +1,6 @@
 extern crate failure;
 extern crate ipfsapi;
+extern crate mime;
 extern crate serde_json;
 extern crate tantivy;
 extern crate tempdir;
@@ -77,12 +78,15 @@ fn add_hash_to_index(
     schema: &Schema,
     index_writer: &mut IndexWriter,
 ) -> Result<(), Error> {
+    use mime::*;
+
     // TODO: Check if hash already indexed
+    // TODO: Check and limit size. `IpfsApi::object_stats` should be able to do this.
 
     // Fetch the hash and check mime-type
     let ipfs_api = IpfsApi::new("127.0.0.1", 5001);
     let file: Vec<u8> = ipfs_api.cat(hash)?.collect();
-    let mime = tree_magic::from_u8(&file);
+    let mime: mime::Mime = tree_magic::from_u8(&file).parse().expect("valid mime");
 
     let schema_hash = schema.get_field("hash").expect("field name set during dev");
     let schema_mime = schema.get_field("mime").expect("field name set during dev");
@@ -90,7 +94,21 @@ fn add_hash_to_index(
     let mut doc = Document::default();
 
     doc.add_text(schema_hash, hash);
-    doc.add_text(schema_mime, &mime);
+    doc.add_text(schema_mime, mime.as_ref());
+
+    // Index actual content in some cases
+    match (mime.type_(), mime.subtype()) {
+        (TEXT, PLAIN) => {
+            let body = String::from_utf8(file)?;
+            doc.add_text(schema_body, &body);
+        }
+        (TEXT, _) => {
+            // TODO: Preprocess somehow - don't want HTML tags, etc indexed
+            let body = String::from_utf8(file)?;
+            doc.add_text(schema_body, &body);
+        }
+        _ => {}
+    }
 
     index_writer.add_document(doc);
     Ok(())
@@ -109,12 +127,21 @@ fn check_index(index_dir: &Path) -> Result<(), Error> {
 
     let searcher = index.searcher();
     let query_parser = QueryParser::for_index(&index, vec![schema_hash, schema_mime, schema_body]);
-
-    let query = query_parser.parse_query("text").unwrap();
     let mut top_collector = TopCollector::with_limit(10);
+
+    println!("Search for \"text\":");
+    let query = query_parser.parse_query("text").unwrap();
     searcher.search(&*query, &mut top_collector)?;
     let doc_addresses = top_collector.docs();
+    for doc_address in doc_addresses {
+        let retrieved_doc = searcher.doc(&doc_address)?;
+        println!("{}", schema.to_json(&retrieved_doc));
+    }
 
+    println!("Search for \"IPFS\":");
+    let query = query_parser.parse_query("IPFS").unwrap();
+    searcher.search(&*query, &mut top_collector)?;
+    let doc_addresses = top_collector.docs();
     for doc_address in doc_addresses {
         let retrieved_doc = searcher.doc(&doc_address)?;
         println!("{}", schema.to_json(&retrieved_doc));

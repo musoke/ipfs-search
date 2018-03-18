@@ -1,6 +1,9 @@
 [package]
+authors = ["Nathan Musoke <nathan.musoke@gmail.com>"]
 name = "ipfs-search"
 version = "0.1.0"
-authors = ["Nathan Musoke <nathan.musoke@gmail.com>"]
 
 [dependencies]
+failure = "0.1.1"
+ipfsapi = "0.2.1"
+serde_json = "1.0.11"

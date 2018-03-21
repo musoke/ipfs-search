@@ -11,7 +11,7 @@ use std::path::Path;
 use tantivy::schema::*;
 use tantivy::{Index, IndexWriter};
 
-pub fn run_indexer(index_dir: &Path) -> Result<(), Error> {
+pub fn run_indexer(index_dir: &Path, limit: Option<usize>) -> Result<(), Error> {
     // Build the schema and index
     let mut schema_builder = SchemaBuilder::default();
 
@@ -30,8 +30,14 @@ pub fn run_indexer(index_dir: &Path) -> Result<(), Error> {
     let filtered_logs = ipfs_api
         .log_tail()?
         .filter(|l| l["event"].as_str() == Some("handleAddProvider"))
-        .filter(|x| x["key"].is_string())
-        .take(10);
+        .filter(|x| x["key"].is_string());
+    let logs;
+    if let Some(limit) = limit {
+        logs = filtered_logs.take(limit);
+    } else {
+        // TODO: remove this limit.  Probably with impl Iterator<_>
+        logs = filtered_logs.take(usize::max_value());
+    }
 
     // Readme directory
     add_hash_to_index(
@@ -52,7 +58,7 @@ pub fn run_indexer(index_dir: &Path) -> Result<(), Error> {
         &mut index_writer,
     )?;
 
-    for line in filtered_logs {
+    for line in logs {
         let hash = line["key"].as_str().unwrap();
         println!("{}", hash);
         add_hash_to_index(hash, &schema, &mut index_writer)?;

@@ -6,7 +6,7 @@ use ipfs_search::run_indexer;
 
 fn main() {
     if let Ok(dir) = TempDir::new("ipfs-search-index") {
-        run_indexer(dir.path()).unwrap();
+        run_indexer(dir.path(), None).unwrap();
         dir.close().unwrap();
     }
 }

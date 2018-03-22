@@ -63,8 +63,10 @@ pub fn run_indexer(index_dir: &Path, limit: Option<usize>) -> Result<(), Error> 
 
     for line in logs {
         let hash = line["key"].as_str().unwrap();
-        println!("{}", hash);
-        add_hash_to_index(hash, &schema, &mut index_writer)?;
+        info!("found hash: {}", hash);
+        if let Err(e) = add_hash_to_index(hash, &schema, &mut index_writer) {
+            error!("{:?}", e)
+        };
     }
 
     index_writer.commit().unwrap();

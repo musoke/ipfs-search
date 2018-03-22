@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate log;
+
 extern crate failure;
 extern crate ipfsapi;
 extern crate mime;

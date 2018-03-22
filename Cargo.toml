@@ -4,6 +4,7 @@ name = "ipfs-search"
 version = "0.1.0"
 
 [dependencies]
+clap = "2.31.2"
 failure = "0.1.1"
 ipfsapi = "0.2.1"
 mime = "0.3.5"

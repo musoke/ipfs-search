@@ -1,3 +1,4 @@
+#[macro_use]
 extern crate clap;
 extern crate ipfs_search;
 extern crate tempdir;
@@ -22,14 +23,17 @@ fn main() {
 }
 
 fn clap_app() -> ArgMatches<'static> {
-    let app = App::new("ipfs-search").arg(
-        Arg::with_name("dir")
-            .long("dir")
-            .short("d")
-            .takes_value(true)
-            .value_name("DIR")
-            .help("directory containing index"),
-    );
+    let app = App::new(format!("{} {}", crate_name!(), "daemon"))
+        .author(crate_authors!())
+        .version(crate_version!())
+        .arg(
+            Arg::with_name("dir")
+                .long("dir")
+                .short("d")
+                .takes_value(true)
+                .value_name("DIR")
+                .help("directory containing index"),
+        );
 
     app.get_matches()
 }

@@ -32,10 +32,10 @@ fn main() {
 
     if let Some(dir) = matches.value_of("dir") {
         let path = Path::new(dir);
-        run_indexer(&path, None).unwrap();
+        run_indexer(&path, None, &[]).unwrap();
     } else {
         if let Ok(dir) = TempDir::new("ipfs-search-index") {
-            run_indexer(dir.path(), None).unwrap();
+            run_indexer(dir.path(), None, &[]).unwrap();
             dir.close().unwrap();
         }
     }

@@ -16,8 +16,17 @@ use tantivy::query::QueryParser;
 use ipfs_search::run_indexer;
 
 fn main() {
+    let hashes = [
+        // Readme directory
+        "QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG",
+        // IPFS About page
+        "QmZTR5bcpQD7cFgTorqxZDYaew1Wqgfbd2ud9QqGPAkK2V",
+        // Hello World
+        "QmfM2r8seH2GiRaC4esTjeraXEachRt8ZsSeGaWTPLyMoG",
+    ];
+
     if let Ok(dir) = TempDir::new("ipfs-search-index") {
-        run_indexer(dir.path(), Some(10)).unwrap();
+        run_indexer(dir.path(), Some(10), &hashes).unwrap();
         check_index(dir.path()).unwrap();
         dir.close().unwrap();
     }

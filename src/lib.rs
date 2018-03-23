@@ -14,7 +14,13 @@ use std::path::Path;
 use tantivy::schema::*;
 use tantivy::{Index, IndexWriter};
 
-pub fn run_indexer(index_dir: &Path, limit: Option<usize>) -> Result<(), Error> {
+pub fn run_indexer(
+    index_dir: &Path,
+    limit: Option<usize>,
+    given_hashes: &[&str],
+) -> Result<(), Error> {
+    info!("started indexer");
+
     // Build the schema and index
     let mut schema_builder = SchemaBuilder::default();
 
@@ -27,6 +33,12 @@ pub fn run_indexer(index_dir: &Path, limit: Option<usize>) -> Result<(), Error> 
     let index = Index::create(index_dir, schema.clone())?;
 
     let mut index_writer = index.writer(50_000_000)?;
+
+    for hash in given_hashes {
+        if let Err(e) = add_hash_to_index(hash, &schema, &mut index_writer) {
+            error!("{:?}", e)
+        };
+    }
 
     // Get events from IPFS
     let ipfs_api = IpfsApi::new("127.0.0.1", 5001);
@@ -42,25 +54,6 @@ pub fn run_indexer(index_dir: &Path, limit: Option<usize>) -> Result<(), Error> 
         logs = filtered_logs.take(usize::max_value());
     }
 
-    // Readme directory
-    add_hash_to_index(
-        "QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG",
-        &schema,
-        &mut index_writer,
-    )?;
-    // IPFS About page
-    add_hash_to_index(
-        "QmZTR5bcpQD7cFgTorqxZDYaew1Wqgfbd2ud9QqGPAkK2V",
-        &schema,
-        &mut index_writer,
-    )?;
-    // Hello World
-    add_hash_to_index(
-        "QmfM2r8seH2GiRaC4esTjeraXEachRt8ZsSeGaWTPLyMoG",
-        &schema,
-        &mut index_writer,
-    )?;
-
     for line in logs {
         let hash = line["key"].as_str().unwrap();
         info!("found hash: {}", hash);
@@ -70,6 +63,7 @@ pub fn run_indexer(index_dir: &Path, limit: Option<usize>) -> Result<(), Error> 
     }
 
     index_writer.commit().unwrap();
+    info!("indexer completed loop");
 
     Ok(())
 }
